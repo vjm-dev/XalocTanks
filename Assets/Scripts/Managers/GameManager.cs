@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using System.Collections;
-//using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
@@ -21,6 +20,8 @@ public class GameManager : MonoBehaviour
     private TankManager m_RoundWinner;          // Reference to the winner of the current round.  Used to make an announcement of who won.
     private TankManager m_GameWinner;           // Reference to the winner of the game.  Used to make an announcement of who won.
 
+    // variable controller check
+    bool isOnePlayerMode = GamemodeController.gameMode;
 
     private void Start()
     {
@@ -28,18 +29,31 @@ public class GameManager : MonoBehaviour
         m_StartWait = new WaitForSeconds(m_StartDelay);
         m_EndWait = new WaitForSeconds(m_EndDelay);
 
-        SpawnAllTanks();
-        SetCameraTargets();
+        // checks if gamemode is single player mode or not
+        if (isOnePlayerMode)
+        {
+            // Set up single player mode gameplay
+            SpawnTanks();
+        }
+        else
+        {
+            // Set up two players mode gameplay
+            SpawnTanks();
 
-        // Once the tanks have been created and the camera is using them as targets, start the game.
-        StartCoroutine(GameLoop());
+            // Once the tanks have been created and the camera is using them as targets, start the game.
+            StartCoroutine(GameLoop());
+        }
+        SetCameraTargets();
     }
 
 
-    private void SpawnAllTanks()
+    private void SpawnTanks()
     {
+        // if the gamemode is 1 player mode, only spawn one tank
+        int tanksLength = (!isOnePlayerMode) ? m_Tanks.Length : 1;
+
         // For all the tanks...
-        for (int i = 0; i < m_Tanks.Length; i++)
+        for (int i = 0; i < tanksLength; i++)
         {
             // ... create them, set their player number and references needed for control.
             m_Tanks[i].m_Instance =
@@ -53,7 +67,9 @@ public class GameManager : MonoBehaviour
     private void SetCameraTargets()
     {
         // Create a collection of transforms the same size as the number of tanks.
-        Transform[] targets = new Transform[m_Tanks.Length];
+        Transform[] targets = (!isOnePlayerMode) 
+                                ? new Transform[m_Tanks.Length] 
+                                : new Transform[1];
 
         // For each of these transforms...
         for (int i = 0; i < targets.Length; i++)
@@ -84,7 +100,6 @@ public class GameManager : MonoBehaviour
         {
             // If there is a game winner, restart the level.
             SceneManager.LoadScene(SceneManager.loadedSceneCount);
-            // Application.LoadLevel(Application.loadedLevel); //deprecated
         }
         else
         {
