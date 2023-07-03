@@ -20,6 +20,18 @@ public class TankShooting : MonoBehaviour
     private float m_ChargeSpeed;                // How fast the launch force increases, based on the max charge time.
     private bool m_Fired;                       // Whether or not the shell has been launched with this button press.
 
+    // ammo
+    int maxAmmoCount = 15;
+    [HideInInspector] public int ammoCount;
+
+    // Add ammo amount
+    public void AddAmmo(int ammo)
+    {
+        ammoCount += ammo;
+
+        // Don't exceed the maximum ammo
+        if (ammoCount >= maxAmmoCount) ammoCount = maxAmmoCount;
+    }
 
     private void OnEnable()
     {
@@ -45,14 +57,14 @@ public class TankShooting : MonoBehaviour
         m_AimSlider.value = m_MinLaunchForce;
 
         // If the max force has been exceeded and the shell hasn't yet been launched...
-        if (m_CurrentLaunchForce >= m_MaxLaunchForce && !m_Fired)
+        if (m_CurrentLaunchForce >= m_MaxLaunchForce && !m_Fired && ammoCount >= 1)
         {
             // ... use the max force and launch the shell.
             m_CurrentLaunchForce = m_MaxLaunchForce;
             Fire();
         }
         // Otherwise, if the fire button has just started being pressed...
-        else if (Input.GetButtonDown(m_FireButton))
+        else if (Input.GetButtonDown(m_FireButton) && ammoCount >= 1)
         {
             // ... reset the fired flag and reset the launch force.
             m_Fired = false;
@@ -63,7 +75,7 @@ public class TankShooting : MonoBehaviour
             m_ShootingAudio.Play();
         }
         // Otherwise, if the fire button is being held and the shell hasn't been launched yet...
-        else if (Input.GetButton(m_FireButton) && !m_Fired)
+        else if (Input.GetButton(m_FireButton) && !m_Fired && ammoCount >= 1)
         {
             // Increment the launch force and update the slider.
             m_CurrentLaunchForce += m_ChargeSpeed * Time.deltaTime;
@@ -71,7 +83,7 @@ public class TankShooting : MonoBehaviour
             m_AimSlider.value = m_CurrentLaunchForce;
         }
         // Otherwise, if the fire button is released and the shell hasn't been launched yet...
-        else if (Input.GetButtonUp(m_FireButton) && !m_Fired)
+        else if (Input.GetButtonUp(m_FireButton) && !m_Fired && ammoCount >= 1)
         {
             // ... launch the shell.
             Fire();
@@ -81,6 +93,13 @@ public class TankShooting : MonoBehaviour
 
     private void Fire()
     {
+        // Don't shoot without ammo
+        if (ammoCount <= 0) return;
+
+        // Ammo is being consumed when firing
+        ammoCount--;
+
+
         // Set the fired flag so only Fire is only called once.
         m_Fired = true;
 

@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 
 public class TankMovement : MonoBehaviour
 {
@@ -22,13 +23,51 @@ public class TankMovement : MonoBehaviour
     private float m_MovementInputValue;         // The current value of the movement input.
     private float m_TurnInputValue;             // The current value of the turn input.
 
+    // for turbo
+    private bool hasTurbo;
+    private float originalSpeed;
+    private float originalTurnSpeed;
+    private Coroutine coroutine; // to control the turbo duration
 
     private void Awake()
     {
+        // set the coroutine in order to restart the turbo duration
+        coroutine = StartCoroutine(TurboEnd(10f));
         rb = GetComponent<Rigidbody>();
     }
 
+    // turbo management
+    public void ActivateTurbo(float seconds, float turboSpeedMultiplier, float turboTurnSpeedMultiplier)
+    {
+        // From here, restart coroutine if the player picked up turbo item again before ending
+        StopCoroutine(coroutine);
 
+        // Don't multiplicate the speed if the player has turbo and picks up turbo item again
+        if (!hasTurbo)
+        {
+            m_Speed *= turboSpeedMultiplier;
+            m_TurnSpeed *= turboTurnSpeedMultiplier;
+        }
+        hasTurbo = true;
+
+        coroutine = StartCoroutine(TurboEnd(seconds));
+    }
+
+    public void StopTurbo()
+    {
+        hasTurbo = false;
+        StopCoroutine(coroutine);
+    }
+
+    private IEnumerator TurboEnd(float seconds)
+    {
+        // reset the original speed
+        yield return new WaitForSeconds(seconds);
+        m_Speed = originalSpeed;
+        m_TurnSpeed = originalTurnSpeed;
+        hasTurbo = false;
+    }
+    
     private void OnEnable()
     {
         // When the tank is turned on, make sure it's not kinematic.
@@ -49,6 +88,10 @@ public class TankMovement : MonoBehaviour
 
     private void Start()
     {
+        // Keep original speed values
+        originalSpeed = m_Speed; 
+        originalTurnSpeed = m_TurnSpeed;
+        
         // The axes names are based on player number.
         m_MovementAxisName = "Vertical" + m_PlayerNumber;
         m_TurnAxisName = "Horizontal" + m_PlayerNumber;

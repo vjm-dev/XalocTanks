@@ -13,7 +13,6 @@ public class GameManager : MonoBehaviour
     public GameObject m_TankPrefab;             // Reference to the prefab the players will control.
     public TankManager[] m_Tanks;               // A collection of managers for enabling and disabling different aspects of the tanks.
 
-
     private int m_RoundNumber;                  // Which round the game is currently on.
     private WaitForSeconds m_StartWait;         // Used to have a delay whilst the round starts.
     private WaitForSeconds m_EndWait;           // Used to have a delay whilst the round or game ends.
@@ -23,16 +22,21 @@ public class GameManager : MonoBehaviour
     // variable controller check
     bool isOnePlayerMode = GamemodeController.gameMode;
 
+    public GameObject[] itemPrefab; // Item prefab
+    public ItemManager[] m_Items; // Items (on Inspector these are treated as SpawnPoints)
+
     private void Start()
     {
         // Create the delays so they only have to be made once.
         m_StartWait = new WaitForSeconds(m_StartDelay);
         m_EndWait = new WaitForSeconds(m_EndDelay);
 
-        // checks if gamemode is single player mode or not
+        SpawnItems();
+        
+        // checks if gamemode is single player mode or two player mode
         if (isOnePlayerMode)
         {
-            // Set up single player mode gameplay
+            // TODO: Set up single player mode gameplay
             SpawnTanks();
         }
         else
@@ -44,6 +48,19 @@ public class GameManager : MonoBehaviour
             StartCoroutine(GameLoop());
         }
         SetCameraTargets();
+    }
+
+    private void SpawnItems()
+    {
+        for (int i = 0; i < m_Items.Length; i++)
+        {
+            int randomItem = Random.Range(0, 3);
+
+            m_Items[i].m_Instance =
+                Instantiate(itemPrefab[randomItem], m_Items[i].m_SpawnPoint.position, m_Items[i].m_SpawnPoint.rotation) as GameObject;
+
+            m_Items[i].Setup();
+        }
     }
 
 
