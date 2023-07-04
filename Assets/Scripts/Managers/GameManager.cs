@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
-    public int m_NumRoundsToWin = 5;            // The number of rounds a single player has to win to win the game.
+    public int m_NumRoundsToWin = 3;            // The number of rounds a single player has to win to win the game.
     public float m_StartDelay = 3f;             // The delay between the start of RoundStarting and RoundPlaying phases.
     public float m_EndDelay = 3f;               // The delay between the end of RoundPlaying and RoundEnding phases.
     public CameraControl m_CameraControl;       // Reference to the CameraControl script for control during different phases.
@@ -19,21 +19,39 @@ public class GameManager : MonoBehaviour
     private TankManager m_RoundWinner;          // Reference to the winner of the current round.  Used to make an announcement of who won.
     private TankManager m_GameWinner;           // Reference to the winner of the game.  Used to make an announcement of who won.
 
-    // variable controller check
-    bool isOnePlayerMode = GamemodeController.gameMode;
+    bool isOnePlayerMode = GamemodeController.gameMode; // Game mode controller check
 
-    public GameObject[] itemPrefab; // Item prefab
-    public ItemManager[] m_Items; // Items (on Inspector these are treated as SpawnPoints)
+    public GameObject[] itemPrefab;             // Item prefab
+    public ItemManager[] m_Items;               // Items (on Inspector these are treated as SpawnPoints)
+
+    public Text textAmmoComponent;              // Show how much ammo they have
+    public Text textWonRoundsComponent;         // Show how many won rounds they have
+    public Text textTimeComponent;              // Show elapsed time
+
+    private float startTime;                    // Time since game started
+    private bool isPaused;                      // Check to pause
 
     private void Start()
     {
+        // Save the start time
+        if (isOnePlayerMode)
+            startTime = Time.time;
+
+        textAmmoComponent.text = "";
+        textWonRoundsComponent.text = "";
+        textTimeComponent.text = "";
+
+        textAmmoComponent.fontSize = 9;
+        textWonRoundsComponent.fontSize = 9;
+        textTimeComponent.fontSize = 13;
+
         // Create the delays so they only have to be made once.
         m_StartWait = new WaitForSeconds(m_StartDelay);
         m_EndWait = new WaitForSeconds(m_EndDelay);
 
         SpawnItems();
         
-        // checks if gamemode is single player mode or two player mode
+        // Checks if gamemode is single player mode or two player mode
         if (isOnePlayerMode)
         {
             // TODO: Set up single player mode gameplay
@@ -48,6 +66,62 @@ public class GameManager : MonoBehaviour
             StartCoroutine(GameLoop());
         }
         SetCameraTargets();
+    }
+
+    private void Update()
+    {
+        // Please don't do that... (- - ')
+        // if (m_GameWinner != null) PauseGame();
+
+        if (!isPaused && isOnePlayerMode)
+            DisplayTime();
+
+        // Update the ammo text to show how much ammo they have
+        DisplayAmmo();
+
+        if (!isOnePlayerMode)
+        {
+            // Update how many won rounds they have
+            DisplayWonRounds();
+        }
+    }
+
+    private void PauseGame()
+    {
+        isPaused = true;
+        Time.timeScale = 0f; // Stop the time
+    }
+
+    
+    private void DisplayAmmo()
+    {
+        string ammoPlayers = "";
+        // Display every player how much ammo they have
+        for (int i = 0; i < m_Tanks.Length; i++)
+            ammoPlayers += "Player " + (i + 1) + " - AMMO: " + m_Tanks[i].m_Shooting.ammoCount.ToString() + "\n";
+
+        textAmmoComponent.text = ammoPlayers;
+    }
+
+    private void DisplayWonRounds()
+    {
+        string wonRoundPlayers = "";
+        // Display every player how much ammo they have
+        for (int i = 0; i < m_Tanks.Length; i++)
+            wonRoundPlayers += "Player " + (i + 1) + " - WINS: " + m_Tanks[i].m_Wins.ToString() + "\n";
+
+        textWonRoundsComponent.text = wonRoundPlayers;
+    }
+
+    private void DisplayTime()
+    {
+        // Calculate the elapsed time since the start of the game
+        float elapsedTime = Time.time - startTime;
+
+        // Convert the elapsed time to a readable format (minutes:seconds)
+        string formattedTime = string.Format("{0:00}:{1:00}", Mathf.FloorToInt(elapsedTime / 60), elapsedTime % 60);
+
+        textTimeComponent.text = formattedTime;
     }
 
     private void SpawnItems()
@@ -66,7 +140,7 @@ public class GameManager : MonoBehaviour
 
     private void SpawnTanks()
     {
-        // if the gamemode is 1 player mode, only spawn one tank
+        // If the gamemode is single player mode, only spawn one tank
         int tanksLength = (!isOnePlayerMode) ? m_Tanks.Length : 1;
 
         // For all the tanks...
@@ -103,20 +177,23 @@ public class GameManager : MonoBehaviour
     // This is called from start and will run each phase of the game one after another.
     private IEnumerator GameLoop()
     {
-        // Start off by running the 'RoundStarting' coroutine but don't return until it's finished.
-        yield return StartCoroutine(RoundStarting());
+        if (!isOnePlayerMode)
+        {
+            // Start off by running the 'RoundStarting' coroutine but don't return until it's finished.
+            yield return StartCoroutine(RoundStarting());
 
-        // Once the 'RoundStarting' coroutine is finished, run the 'RoundPlaying' coroutine but don't return until it's finished.
-        yield return StartCoroutine(RoundPlaying());
+            // Once the 'RoundStarting' coroutine is finished, run the 'RoundPlaying' coroutine but don't return until it's finished.
+            yield return StartCoroutine(RoundPlaying());
 
-        // Once execution has returned here, run the 'RoundEnding' coroutine, again don't return until it's finished.
-        yield return StartCoroutine(RoundEnding());
+            // Once execution has returned here, run the 'RoundEnding' coroutine, again don't return until it's finished.
+            yield return StartCoroutine(RoundEnding());
+        }
 
         // This code is not run until 'RoundEnding' has finished.  At which point, check if a game winner has been found.
         if (m_GameWinner != null)
         {
-            // If there is a game winner, restart the level.
-            SceneManager.LoadScene(SceneManager.loadedSceneCount);
+            // If there is a game winner, go to main menu.
+            SceneManager.LoadScene("MainMenu");
         }
         else
         {
