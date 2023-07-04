@@ -5,9 +5,15 @@ using UnityEngine;
 [Serializable]
 public class ItemManager : MonoBehaviour
 {
-    public Transform m_SpawnPoint;
+    [HideInInspector] public Transform m_SpawnPoint;
     [HideInInspector] public GameObject m_Instance;
     [HideInInspector] public Item m_Item;
+
+    // Get the transform from the gameObject itself at the start of the game
+    private void Start()
+    {
+        m_SpawnPoint = GetComponent<Transform>();
+    }
 
     public void Setup()
     {

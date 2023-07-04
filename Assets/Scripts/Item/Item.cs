@@ -12,7 +12,6 @@ public class Item : MonoBehaviour
         Shield
     }
 
-    public int m_ItemNumber = 1; // Number (Also known as ID)
     public ItemType itemType;    // Type of item
 
     // Item effects
@@ -23,7 +22,7 @@ public class Item : MonoBehaviour
     public float turboTurnSpeedMultiplier = 2f;
 
     // Tank references
-    private TankHealth tankHealth;     // for shield
+    private TankStatus tankStatus;     // for shield
     private TankMovement tankMovement; // for speed
     private TankShooting tankShooting; // for ammo
 
@@ -56,7 +55,7 @@ public class Item : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             // Obtain player properties
-            tankHealth   = other.GetComponent<TankHealth>();
+            tankStatus   = other.GetComponent<TankStatus>();
             tankMovement = other.GetComponent<TankMovement>();
             tankShooting = other.GetComponent<TankShooting>();
 
@@ -72,7 +71,7 @@ public class Item : MonoBehaviour
                     break;
 
                 case ItemType.Shield: // Activate shield effect on the player
-                    tankHealth.ActivateShield();
+                    tankStatus.ActivateShield();
                     break;
             }
 
