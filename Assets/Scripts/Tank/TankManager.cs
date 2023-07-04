@@ -15,16 +15,15 @@ public class TankManager
 
 
     private TankMovement m_Movement;
-    private TankShooting m_Shooting;
-    private TankHealth m_Health;
+    [HideInInspector] public TankShooting m_Shooting;
+    private TankStatus m_Status;
     private GameObject m_CanvasGameObject;
-
 
     public void Setup()
     {
         m_Movement = m_Instance.GetComponent<TankMovement>();
         m_Shooting = m_Instance.GetComponent<TankShooting>();
-        m_Health = m_Instance.GetComponent<TankHealth>();
+        m_Status = m_Instance.GetComponent<TankStatus>();
         m_CanvasGameObject = m_Instance.GetComponentInChildren<Canvas>().gameObject;
 
         m_Movement.m_PlayerNumber = m_PlayerNumber;
@@ -66,7 +65,7 @@ public class TankManager
         m_Shooting.ammoCount = 10; // Initial ammo
 
         // Shield disabled by default
-        m_Health.DisableShield();
+        m_Status.DisableShield();
 
         // Turbo disabled by default
         m_Movement.StopTurbo();
