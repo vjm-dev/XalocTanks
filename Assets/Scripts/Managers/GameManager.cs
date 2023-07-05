@@ -19,43 +19,67 @@ public class GameManager : MonoBehaviour
     private TankManager m_RoundWinner;          // Reference to the winner of the current round.  Used to make an announcement of who won.
     private TankManager m_GameWinner;           // Reference to the winner of the game.  Used to make an announcement of who won.
 
-    bool isOnePlayerMode = GamemodeController.gameMode; // Game mode controller check
+    private bool isOnePlayerMode = GamemodeController.gameMode; // Game mode controller check
+    private int numTanks;                       // Used to manage the number of tanks in the game
 
     public GameObject[] itemPrefab;             // Item prefab
     public ItemManager[] m_Items;               // Items (on Inspector these are treated as SpawnPoints)
 
     public Text textAmmoComponent;              // Show how much ammo they have
-    public Text textWonRoundsComponent;         // Show how many won rounds they have
+    public Text textScorePointsComponent;       // Show how many scorepoints/won rounds they have
     public Text textTimeComponent;              // Show elapsed time
 
     private float startTime;                    // Time since game started
     private bool isPaused;                      // Check to pause
+    private string timeResult;                  // Result of elapsed time
+
+    public int maxCactuses = 5;                 // Maximum number of cactuses
+
+    [HideInInspector] public int scorePoints;   // Score points of the destroyed cactuses
+    public int maxScorePoints = 20;             // Maximum score points of the destroyed cactuses
+
+    public GameObject cactusPrefab;             // Cactus prefab
+    private GameObject[] cactus;                // Cactus being spawned on some place
 
     private void Start()
     {
-        // Save the start time
-        if (isOnePlayerMode)
-            startTime = Time.time;
+        // Initialize the score points
+        scorePoints = 0;
 
+        // If the game mode is single player mode, only spawn one tank
+        numTanks = (isOnePlayerMode) ? 1 : m_Tanks.Length;
+
+        // Set up the texts and their sizes
         textAmmoComponent.text = "";
-        textWonRoundsComponent.text = "";
+        textScorePointsComponent.text = "";
         textTimeComponent.text = "";
 
-        textAmmoComponent.fontSize = 9;
-        textWonRoundsComponent.fontSize = 9;
-        textTimeComponent.fontSize = 13;
+        textAmmoComponent.fontSize = 16;
+        textScorePointsComponent.fontSize = 16;
+        textTimeComponent.fontSize = 19;
 
         // Create the delays so they only have to be made once.
         m_StartWait = new WaitForSeconds(m_StartDelay);
         m_EndWait = new WaitForSeconds(m_EndDelay);
 
         SpawnItems();
-        
-        // Checks if gamemode is single player mode or two player mode
+
+        // Checks if game mode is single player mode or two player mode
         if (isOnePlayerMode)
         {
-            // TODO: Set up single player mode gameplay
+            // Don't start the time yet
+            isPaused = true;
+
+            cactus = new GameObject[maxCactuses];
+            // Initialize other game elements
+
             SpawnTanks();
+
+            // Once the tanks have been created and the camera is using them as targets, start the game.
+            StartCoroutine(GameLoop());
+
+            // Start cactus generation
+            StartCoroutine(GenerateCactus());
         }
         else
         {
@@ -70,10 +94,7 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        // Please don't do that... (- - ')
-        // if (m_GameWinner != null) PauseGame();
-
-        if (!isPaused && isOnePlayerMode)
+        if (isOnePlayerMode)
             DisplayTime();
 
         // Update the ammo text to show how much ammo they have
@@ -84,37 +105,60 @@ public class GameManager : MonoBehaviour
             // Update how many won rounds they have
             DisplayWonRounds();
         }
+        else
+        {
+            // Update how many points obtained destroying cactuses
+            DisplayScorePoints();
+        }
     }
 
-    private void PauseGame()
-    {
-        isPaused = true;
-        Time.timeScale = 0f; // Stop the time
-    }
 
-    
     private void DisplayAmmo()
     {
-        string ammoPlayers = "";
+        string ammoPlayers = (!isOnePlayerMode)
+                            ? ""
+                            : "AMMO: " + m_Tanks[0].m_Shooting.ammoCount.ToString();
+
         // Display every player how much ammo they have
-        for (int i = 0; i < m_Tanks.Length; i++)
-            ammoPlayers += "Player " + (i + 1) + " - AMMO: " + m_Tanks[i].m_Shooting.ammoCount.ToString() + "\n";
+        if (!isOnePlayerMode)
+            for (int i = 0; i < numTanks; i++)
+                ammoPlayers += "Player " + (i + 1) + " - AMMO: " + m_Tanks[i].m_Shooting.ammoCount.ToString() + "\n";
 
         textAmmoComponent.text = ammoPlayers;
     }
+
 
     private void DisplayWonRounds()
     {
         string wonRoundPlayers = "";
         // Display every player how much ammo they have
-        for (int i = 0; i < m_Tanks.Length; i++)
+        for (int i = 0; i < numTanks; i++)
             wonRoundPlayers += "Player " + (i + 1) + " - WINS: " + m_Tanks[i].m_Wins.ToString() + "\n";
 
-        textWonRoundsComponent.text = wonRoundPlayers;
+        textScorePointsComponent.text = wonRoundPlayers;
     }
+
+
+    private void DisplayScorePoints()
+    {
+        string scorePointstxt = "";
+        scorePointstxt += "SCORE: " + scorePoints.ToString() + "\n";
+
+        textScorePointsComponent.text = scorePointstxt;
+    }
+
 
     private void DisplayTime()
     {
+        // If it's paused, don't show the elapsed time
+        if (isPaused)
+        {
+            textTimeComponent.enabled = false;
+            return;
+        }
+
+        textTimeComponent.enabled = true;
+
         // Calculate the elapsed time since the start of the game
         float elapsedTime = Time.time - startTime;
 
@@ -122,8 +166,120 @@ public class GameManager : MonoBehaviour
         string formattedTime = string.Format("{0:00}:{1:00}", Mathf.FloorToInt(elapsedTime / 60), elapsedTime % 60);
 
         textTimeComponent.text = formattedTime;
+        timeResult = formattedTime;
     }
 
+    // CACTUS MANAGEMENT METHODS
+
+    // To count how many active cactuses are available
+    int CountActiveCactus()
+    {
+        int count = 0;
+
+        for (int i = 0; i < cactus.Length; i++)
+            if (cactus[i] != null)
+                count++;
+
+        return count;
+    }
+
+
+    private Vector3 GetRandomSpawnPosition()
+    {
+        // current terrain distances
+        float minX = -50f;
+        float maxX = 20f;
+        float minZ = -35f;
+        float maxZ = 35f;
+        float y = 0;
+
+        Vector3 randomPosition = Vector3.zero;
+        int solidObjectLayer = LayerMask.NameToLayer("Solid");
+        bool validPosition = false;
+        int maxAttempts = 10;
+        int currentAttempts = 0;
+
+        while (!validPosition && currentAttempts < maxAttempts)
+        {
+            float randomX = Random.Range(minX, maxX);
+            float randomZ = Random.Range(minZ, maxZ);
+
+            randomPosition = new Vector3(randomX, y, randomZ);
+
+            // Check if the generated position is near other objects
+            Collider[] colliders = Physics.OverlapSphere(randomPosition, 10f);
+
+            bool positionOccupied = false;
+
+            foreach (Collider collider in colliders)
+            {
+                // Ignore the collider of the cactus itself and other objects that we don't want to consider
+                if (collider.gameObject == gameObject || collider.gameObject.CompareTag("Player"))
+                    continue;
+
+                // Check for collision with a solid object
+                if (collider.gameObject.layer == solidObjectLayer)
+                {
+                    positionOccupied = true;
+                    break;
+                }
+            }
+
+            if (!positionOccupied)
+                validPosition = true;
+            else
+                currentAttempts++;
+        }
+
+        if (!validPosition)
+        {
+            // If a valid position is not found after several attempts, use a default position or take some other action
+            randomPosition = new Vector3(0, y, 0);
+
+            return randomPosition;
+        }
+
+        return randomPosition;
+    }
+
+
+    private IEnumerator GenerateCactus()
+    {
+        // End reaching until maximum score points
+        while (scorePoints < maxScorePoints)
+        {
+            // Generate new cactus if the limit hasn't been reached
+            if (CountActiveCactus() < maxCactuses)
+                SpawnCactus();
+
+            yield return new WaitForSeconds(Random.Range(1f, 3f));
+        }
+
+        // Stop cactus generation
+        StopCoroutine(GenerateCactus());
+    }
+
+
+    private void SpawnCactus()
+    {
+        // Generate random position for the cactus
+        Vector3 spawnPosition = GetRandomSpawnPosition();
+
+        // Instantiate the cactus prefab at the generated position
+        GameObject newCactus = Instantiate(cactusPrefab, spawnPosition, Quaternion.identity);
+
+        // Add a reference to the generated cactus to the array
+        for (int i = 0; i < cactus.Length; i++)
+        {
+            if (cactus[i] == null)
+            {
+                cactus[i] = newCactus;
+                break;
+            }
+        }
+    }
+
+    // ITEMS MANAGEMENT METHOD
     private void SpawnItems()
     {
         for (int i = 0; i < m_Items.Length; i++)
@@ -140,11 +296,8 @@ public class GameManager : MonoBehaviour
 
     private void SpawnTanks()
     {
-        // If the gamemode is single player mode, only spawn one tank
-        int tanksLength = (!isOnePlayerMode) ? m_Tanks.Length : 1;
-
         // For all the tanks...
-        for (int i = 0; i < tanksLength; i++)
+        for (int i = 0; i < numTanks; i++)
         {
             // ... create them, set their player number and references needed for control.
             m_Tanks[i].m_Instance =
@@ -158,8 +311,8 @@ public class GameManager : MonoBehaviour
     private void SetCameraTargets()
     {
         // Create a collection of transforms the same size as the number of tanks.
-        Transform[] targets = (!isOnePlayerMode) 
-                                ? new Transform[m_Tanks.Length] 
+        Transform[] targets = (!isOnePlayerMode)
+                                ? new Transform[m_Tanks.Length]
                                 : new Transform[1];
 
         // For each of these transforms...
@@ -177,22 +330,21 @@ public class GameManager : MonoBehaviour
     // This is called from start and will run each phase of the game one after another.
     private IEnumerator GameLoop()
     {
-        if (!isOnePlayerMode)
+        // Start off by running the 'RoundStarting' coroutine but don't return until it's finished.
+        yield return StartCoroutine(RoundStarting());
+
+        // Once the 'RoundStarting' coroutine is finished, run the 'RoundPlaying' coroutine but don't return until it's finished.
+        yield return StartCoroutine(RoundPlaying());
+
+        // Once execution has returned here, run the 'RoundEnding' coroutine, again don't return until it's finished.
+        yield return (isOnePlayerMode) 
+                    ? StartCoroutine(SinglePlayerModeEnding())
+                    : StartCoroutine(RoundEnding()); 
+
+        // This code is not run until 'SinglePlayerModeEnding' or 'RoundEnding' has finished.  At which point, check if a game winner has been found.
+        if (m_GameWinner != null || scorePoints >= maxScorePoints)
         {
-            // Start off by running the 'RoundStarting' coroutine but don't return until it's finished.
-            yield return StartCoroutine(RoundStarting());
-
-            // Once the 'RoundStarting' coroutine is finished, run the 'RoundPlaying' coroutine but don't return until it's finished.
-            yield return StartCoroutine(RoundPlaying());
-
-            // Once execution has returned here, run the 'RoundEnding' coroutine, again don't return until it's finished.
-            yield return StartCoroutine(RoundEnding());
-        }
-
-        // This code is not run until 'RoundEnding' has finished.  At which point, check if a game winner has been found.
-        if (m_GameWinner != null)
-        {
-            // If there is a game winner, go to main menu.
+            // If there is a game winner or already obtained maximum score points destroying cactuses, go to main menu.
             SceneManager.LoadScene("MainMenu");
         }
         else
@@ -201,6 +353,22 @@ public class GameManager : MonoBehaviour
             // Note that this coroutine doesn't yield.  This means that the current version of the GameLoop will end.
             StartCoroutine(GameLoop());
         }
+    }
+
+
+    private IEnumerator SinglePlayerModeEnding()
+    {
+        // Stop tanks from moving.
+        DisableTankControl();
+        
+        // Pause and save the elapsed time result
+        isPaused = true;
+
+        // Get the message about the result of the time
+        m_MessageText.text = "YOUR TIME RECORD: " + timeResult;
+
+        // Wait for the specified length of time until yielding control back to the game loop.
+        yield return m_StartWait;
     }
 
 
@@ -213,12 +381,21 @@ public class GameManager : MonoBehaviour
         // Snap the camera's zoom and position to something appropriate for the reset tanks.
         m_CameraControl.SetStartPositionAndSize();
 
-        // Increment the round number and display text showing the players what round it is.
-        m_RoundNumber++;
-        m_MessageText.text = "ROUND " + m_RoundNumber;
+        if (isOnePlayerMode)
+            m_MessageText.text = "DESTROY ALL CACTUSES AS FAST AS YOU CAN!";
+        else
+        {
+            // Increment the round number and display text showing the players what round it is.
+            m_RoundNumber++;
+            m_MessageText.text = "ROUND " + m_RoundNumber;
+        }
 
         // Wait for the specified length of time until yielding control back to the game loop.
         yield return m_StartWait;
+
+        // Save the start time and unpause the time
+        startTime = Time.time;
+        isPaused = false;
     }
 
 
@@ -231,11 +408,15 @@ public class GameManager : MonoBehaviour
         m_MessageText.text = string.Empty;
 
         // While there is not one tank left...
-        while (!OneTankLeft())
-        {
-            // ... return on the next frame.
-            yield return null;
-        }
+        if (!isOnePlayerMode)
+            while (!OneTankLeft())
+            {
+                // ... return on the next frame.
+                yield return null;
+            }
+        else
+            while (scorePoints < maxScorePoints)
+                yield return null;
     }
 
 
@@ -273,7 +454,7 @@ public class GameManager : MonoBehaviour
         int numTanksLeft = 0;
 
         // Go through all the tanks...
-        for (int i = 0; i < m_Tanks.Length; i++)
+        for (int i = 0; i < numTanks; i++)
         {
             // ... and if they are active, increment the counter.
             if (m_Tanks[i].m_Instance.activeSelf)
@@ -290,7 +471,7 @@ public class GameManager : MonoBehaviour
     private TankManager GetRoundWinner()
     {
         // Go through all the tanks...
-        for (int i = 0; i < m_Tanks.Length; i++)
+        for (int i = 0; i < numTanks; i++)
         {
             // ... and if one of them is active, it is the winner so return it.
             if (m_Tanks[i].m_Instance.activeSelf)
@@ -306,7 +487,7 @@ public class GameManager : MonoBehaviour
     private TankManager GetGameWinner()
     {
         // Go through all the tanks...
-        for (int i = 0; i < m_Tanks.Length; i++)
+        for (int i = 0; i < numTanks; i++)
         {
             // ... and if one of them has enough rounds to win the game, return it.
             if (m_Tanks[i].m_Wins == m_NumRoundsToWin)
@@ -332,10 +513,8 @@ public class GameManager : MonoBehaviour
         message += "\n\n\n\n";
 
         // Go through all the tanks and add each of their scores to the message.
-        for (int i = 0; i < m_Tanks.Length; i++)
-        {
+        for (int i = 0; i < numTanks; i++)
             message += m_Tanks[i].m_ColoredPlayerText + ": " + m_Tanks[i].m_Wins + " WINS\n";
-        }
 
         // If there is a game winner, change the entire message to reflect that.
         if (m_GameWinner != null)
@@ -348,27 +527,21 @@ public class GameManager : MonoBehaviour
     // This function is used to turn all the tanks back on and reset their positions and properties.
     private void ResetAllTanks()
     {
-        for (int i = 0; i < m_Tanks.Length; i++)
-        {
+        for (int i = 0; i < numTanks; i++)
             m_Tanks[i].Reset();
-        }
     }
 
 
     private void EnableTankControl()
     {
-        for (int i = 0; i < m_Tanks.Length; i++)
-        {
+        for (int i = 0; i < numTanks; i++)
             m_Tanks[i].EnableControl();
-        }
     }
 
 
     private void DisableTankControl()
     {
-        for (int i = 0; i < m_Tanks.Length; i++)
-        {
+        for (int i = 0; i < numTanks; i++)
             m_Tanks[i].DisableControl();
-        }
     }
 }
