@@ -61,8 +61,9 @@ public class TankManager
     {
         m_Instance.transform.position = m_SpawnPoint.position;
         m_Instance.transform.rotation = m_SpawnPoint.rotation;
-
-        m_Shooting.ammoCount = 10; // Initial ammo
+        
+        // Initial ammo
+        m_Shooting.ammoCount = 10;
 
         // Shield disabled by default
         m_Status.DisableShield();

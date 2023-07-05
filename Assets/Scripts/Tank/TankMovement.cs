@@ -31,6 +31,10 @@ public class TankMovement : MonoBehaviour
 
     private void Awake()
     {
+        // Initialize the speed
+        originalSpeed = m_Speed;
+        originalTurnSpeed = m_TurnSpeed;
+
         // set the coroutine in order to restart the turbo duration
         coroutine = StartCoroutine(TurboEnd(10f));
         rb = GetComponent<Rigidbody>();
@@ -56,6 +60,8 @@ public class TankMovement : MonoBehaviour
     public void StopTurbo()
     {
         hasTurbo = false;
+        m_Speed = originalSpeed;
+        m_TurnSpeed = originalTurnSpeed;
         StopCoroutine(coroutine);
     }
 

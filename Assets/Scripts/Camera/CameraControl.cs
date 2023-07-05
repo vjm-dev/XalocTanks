@@ -14,6 +14,7 @@ public class CameraControl : MonoBehaviour
     private Vector3 m_MoveVelocity;                 // Reference velocity for the smooth damping of the position.
     private Vector3 m_DesiredPosition;              // The position the camera is moving towards.
 
+    private bool isOnePlayerMode = GamemodeController.gameMode; // Game mode controller check
 
     private void Awake()
     {
@@ -73,7 +74,8 @@ public class CameraControl : MonoBehaviour
     private void Zoom()
     {
         // Find the required size based on the desired position and smoothly transition to that size.
-        float requiredSize = FindRequiredSize();
+        // If the game mode is single player mode, the zoom size is different from two player mode
+        float requiredSize = (isOnePlayerMode) ? 13f : FindRequiredSize();
         m_Camera.orthographicSize = Mathf.SmoothDamp(m_Camera.orthographicSize, requiredSize, ref m_ZoomSpeed, m_DampTime);
     }
 
