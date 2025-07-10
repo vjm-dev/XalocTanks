@@ -1,7 +1,9 @@
 # Xaloc Tanks!
 Candidate technical test 
 
-The project uses _Unity 2022.3.2f1_.
+Uses _Unity 6.0 (6000.0.53f1)_.
+
+The project was started with the following version: _Unity 2022.3.2f1_.
 
 ## Game controls
 
