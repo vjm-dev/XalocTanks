@@ -10,18 +10,15 @@ public class ShellExplosion : MonoBehaviour
     public float m_MaxLifeTime = 2f;                    // The time in seconds before the shell is removed.
     public float m_ExplosionRadius = 0.5f;              // The maximum distance away from the explosion tanks can be and are still affected.
 
-    bool isOnePlayerMode = GamemodeController.gameMode; // Game mode controller check
-
     private void Start()
     {
         // If it isn't destroyed by then, destroy the shell after it's lifetime.
         Destroy(gameObject, m_MaxLifeTime);
     }
 
-
     private void OnTriggerEnter(Collider other)
     {
-        LayerMask currentMask = (isOnePlayerMode) ? m_CactusMask : m_TankMask;
+        LayerMask currentMask = (GamemodeController.IsSinglePlayer) ? m_CactusMask : m_TankMask;
         // Collect all the colliders in a sphere from the shell's current position to a radius of the explosion radius.
         Collider[] colliders = Physics.OverlapSphere(transform.position, m_ExplosionRadius, currentMask);
 
@@ -39,29 +36,23 @@ public class ShellExplosion : MonoBehaviour
             targetRigidbody.AddExplosionForce(m_ExplosionForce, transform.position, m_ExplosionRadius);
 
             // In single player mode, only it will detect cactuses in the scene. In two player mode, only the tanks.
-            if (isOnePlayerMode)
+            if (GamemodeController.IsSinglePlayer)
             {
                 // Find the Cactus script associated with the rigidbody.
                 Cactus cactus = targetRigidbody.GetComponent<Cactus>();
 
-                // If there is no Cactus script attached to the gameobject, go on to the next collider.
-                if (!cactus)
-                    continue;
-
-                // Destroy the cactus.
-                cactus.DestroyCactus();
+                // If there is Cactus script attached to the gameobject, destroy the cactus.
+                if (cactus)
+                    cactus.DestroyCactus();
             }
             else
             {
                 // Find the TankStatus script associated with the rigidbody.
                 TankStatus targetTank = targetRigidbody.GetComponent<TankStatus>();
 
-                // If there is no TankStatus script attached to the gameobject, go on to the next collider.
-                if (!targetTank)
-                    continue;
-
-                // Destroy the tank.
-                targetTank.Kill();
+                // If there is TankStatus script attached to the gameobject, destroy the tank.
+                if (targetTank)
+                    targetTank.Kill();
             }
         }
 

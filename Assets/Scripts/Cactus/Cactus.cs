@@ -8,7 +8,7 @@ public class Cactus : MonoBehaviour
 
     private void Awake()
     {
-        gameManager = GameObject.FindObjectOfType<GameManager>();
+        gameManager = FindFirstObjectByType<GameManager>();
     }
 
     public void DestroyCactus()

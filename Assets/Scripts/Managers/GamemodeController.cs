@@ -1,9 +1,12 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 // Controller to manage the selected game mode
 public class GamemodeController : MonoBehaviour
 {
-    public static bool gameMode;
+    public static bool IsSinglePlayer { get; private set; }
+
+    public static void SetGameMode(bool isSinglePlayer)
+    {
+        IsSinglePlayer = isSinglePlayer;
+    }
 }

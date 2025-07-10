@@ -12,15 +12,13 @@ public class GameManager : MonoBehaviour
     public Text m_MessageText;                  // Reference to the overlay Text to display winning text, etc.
     public GameObject m_TankPrefab;             // Reference to the prefab the players will control.
     public TankManager[] m_Tanks;               // A collection of managers for enabling and disabling different aspects of the tanks.
+    private int numTanks;                       // Used to manage the number of tanks in the game
 
     private int m_RoundNumber;                  // Which round the game is currently on.
     private WaitForSeconds m_StartWait;         // Used to have a delay whilst the round starts.
     private WaitForSeconds m_EndWait;           // Used to have a delay whilst the round or game ends.
     private TankManager m_RoundWinner;          // Reference to the winner of the current round.  Used to make an announcement of who won.
     private TankManager m_GameWinner;           // Reference to the winner of the game.  Used to make an announcement of who won.
-
-    private bool isOnePlayerMode = GamemodeController.gameMode; // Game mode controller check
-    private int numTanks;                       // Used to manage the number of tanks in the game
 
     public GameObject[] itemPrefab;             // Item prefab
     public ItemManager[] m_Items;               // Items (on Inspector these are treated as SpawnPoints)
@@ -47,7 +45,7 @@ public class GameManager : MonoBehaviour
         scorePoints = 0;
 
         // If the game mode is single player mode, only spawn one tank
-        numTanks = (isOnePlayerMode) ? 1 : m_Tanks.Length;
+        numTanks = (GamemodeController.IsSinglePlayer) ? 1 : m_Tanks.Length;
 
         // Set up the texts and their sizes
         textAmmoComponent.text = "";
@@ -65,7 +63,7 @@ public class GameManager : MonoBehaviour
         SpawnItems();
 
         // Checks if game mode is single player mode or two player mode
-        if (isOnePlayerMode)
+        if (GamemodeController.IsSinglePlayer)
         {
             // Don't start the time yet
             isPaused = true;
@@ -94,13 +92,13 @@ public class GameManager : MonoBehaviour
 
     private void Update()
     {
-        if (isOnePlayerMode)
+        if (GamemodeController.IsSinglePlayer)
             DisplayTime();
 
         // Update the ammo text to show how much ammo they have
         DisplayAmmo();
 
-        if (!isOnePlayerMode)
+        if (!GamemodeController.IsSinglePlayer)
         {
             // Update how many won rounds they have
             DisplayWonRounds();
@@ -115,12 +113,12 @@ public class GameManager : MonoBehaviour
 
     private void DisplayAmmo()
     {
-        string ammoPlayers = (!isOnePlayerMode)
+        string ammoPlayers = (!GamemodeController.IsSinglePlayer)
                             ? ""
                             : "AMMO: " + m_Tanks[0].m_Shooting.ammoCount.ToString();
 
         // Display every player how much ammo they have
-        if (!isOnePlayerMode)
+        if (!GamemodeController.IsSinglePlayer)
             for (int i = 0; i < numTanks; i++)
                 ammoPlayers += "Player " + (i + 1) + " - AMMO: " + m_Tanks[i].m_Shooting.ammoCount.ToString() + "\n";
 
@@ -311,7 +309,7 @@ public class GameManager : MonoBehaviour
     private void SetCameraTargets()
     {
         // Create a collection of transforms the same size as the number of tanks.
-        Transform[] targets = (!isOnePlayerMode)
+        Transform[] targets = (!GamemodeController.IsSinglePlayer)
                                 ? new Transform[m_Tanks.Length]
                                 : new Transform[1];
 
@@ -337,7 +335,7 @@ public class GameManager : MonoBehaviour
         yield return StartCoroutine(RoundPlaying());
 
         // Once execution has returned here, run the 'RoundEnding' coroutine, again don't return until it's finished.
-        yield return (isOnePlayerMode) 
+        yield return (GamemodeController.IsSinglePlayer) 
                     ? StartCoroutine(SinglePlayerModeEnding())
                     : StartCoroutine(RoundEnding()); 
 
@@ -381,8 +379,8 @@ public class GameManager : MonoBehaviour
         // Snap the camera's zoom and position to something appropriate for the reset tanks.
         m_CameraControl.SetStartPositionAndSize();
 
-        if (isOnePlayerMode)
-            m_MessageText.text = "DESTROY ALL CACTUSES AS FAST AS YOU CAN!";
+        if (GamemodeController.IsSinglePlayer)
+            m_MessageText.text = "DESTROY ALL CACTUSES AS FAST AS POSSIBLE!";
         else
         {
             // Increment the round number and display text showing the players what round it is.
@@ -408,7 +406,7 @@ public class GameManager : MonoBehaviour
         m_MessageText.text = string.Empty;
 
         // While there is not one tank left...
-        if (!isOnePlayerMode)
+        if (!GamemodeController.IsSinglePlayer)
             while (!OneTankLeft())
             {
                 // ... return on the next frame.

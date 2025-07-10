@@ -1,9 +1,7 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
 
 public class TankStatus : MonoBehaviour
 {
-    private bool isAlive;                               // Variable to check if the tank is alive
     public GameObject m_ExplosionPrefab;                // A prefab that will be instantiated in Awake, then used whenever the tank dies.
 
     private AudioSource m_ExplosionAudio;               // The audio source to play when the tank explodes.
@@ -63,7 +61,6 @@ public class TankStatus : MonoBehaviour
     private void OnEnable()
     {
         // When the tank is enabled, reset the tank's status and whether or not it's dead.
-        isAlive = true;
         m_Dead = false;
     }
 
@@ -80,11 +77,8 @@ public class TankStatus : MonoBehaviour
             return;
         }
 
-        // Set as dead
-        isAlive = false;
-
         // If the current status isn't alive and it has not yet been registered, call OnDeath.
-        if (!isAlive && !m_Dead)
+        if (!m_Dead)
             OnDeath();
     }
 

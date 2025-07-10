@@ -27,7 +27,7 @@ public class TankMovement : MonoBehaviour
     private bool hasTurbo;
     private float originalSpeed;
     private float originalTurnSpeed;
-    private Coroutine coroutine; // to control the turbo duration
+    private Coroutine turboCoroutine; // to control the turbo duration
 
     private void Awake()
     {
@@ -36,7 +36,7 @@ public class TankMovement : MonoBehaviour
         originalTurnSpeed = m_TurnSpeed;
 
         // set the coroutine in order to restart the turbo duration
-        coroutine = StartCoroutine(TurboEnd(10f));
+        turboCoroutine = StartCoroutine(EndTurbo(10f));
         rb = GetComponent<Rigidbody>();
     }
 
@@ -44,28 +44,40 @@ public class TankMovement : MonoBehaviour
     public void ActivateTurbo(float seconds, float turboSpeedMultiplier, float turboTurnSpeedMultiplier)
     {
         // From here, restart coroutine if the player picked up turbo item again before ending
-        StopCoroutine(coroutine);
+        if (turboCoroutine != null)
+            StopCoroutine(turboCoroutine);
 
         // Don't multiplicate the speed if the player has turbo and picks up turbo item again
         if (!hasTurbo)
         {
             m_Speed *= turboSpeedMultiplier;
             m_TurnSpeed *= turboTurnSpeedMultiplier;
+            hasTurbo = true;
         }
-        hasTurbo = true;
 
-        coroutine = StartCoroutine(TurboEnd(seconds));
+        turboCoroutine = StartCoroutine(EndTurbo(seconds));
+    }
+
+    private void ResetTurbo()
+    {
+        m_Speed = originalSpeed;
+        m_TurnSpeed = originalTurnSpeed;
+        hasTurbo = false;
     }
 
     public void StopTurbo()
     {
-        hasTurbo = false;
-        m_Speed = originalSpeed;
-        m_TurnSpeed = originalTurnSpeed;
-        StopCoroutine(coroutine);
+        if (hasTurbo)
+            ResetTurbo();
+
+        if (turboCoroutine != null)
+        {
+            StopCoroutine(turboCoroutine);
+            turboCoroutine = null;
+        }
     }
 
-    private IEnumerator TurboEnd(float seconds)
+    private IEnumerator EndTurbo(float seconds)
     {
         // reset the original speed
         yield return new WaitForSeconds(seconds);
@@ -89,15 +101,12 @@ public class TankMovement : MonoBehaviour
     {
         // When the tank is turned off, set it to kinematic so it stops moving
         rb.isKinematic = true;
+        StopTurbo();
     }
 
 
     private void Start()
     {
-        // Keep original speed values
-        originalSpeed = m_Speed; 
-        originalTurnSpeed = m_TurnSpeed;
-        
         // The axes names are based on player number.
         m_MovementAxisName = "Vertical" + m_PlayerNumber;
         m_TurnAxisName = "Horizontal" + m_PlayerNumber;

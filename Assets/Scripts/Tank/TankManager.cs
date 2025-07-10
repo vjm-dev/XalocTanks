@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 [Serializable]
@@ -31,11 +29,9 @@ public class TankManager
 
         m_ColoredPlayerText = "<color=#" + ColorUtility.ToHtmlStringRGB(m_PlayerColor) + ">PLAYER " + m_PlayerNumber + "</color>";
 
-        MeshRenderer[] renderers = m_Instance.GetComponentsInChildren<MeshRenderer>();
-
-        for (int i = 0; i < renderers.Length; i++)
+        foreach (var renderer in m_Instance.GetComponentsInChildren<MeshRenderer>())
         {
-            renderers[i].material.color = m_PlayerColor;
+            renderer.material.color = m_PlayerColor;
         }
     }
 
